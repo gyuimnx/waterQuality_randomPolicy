@@ -3,6 +3,7 @@ import random
 
 def quantize_state(state):
     residualCI, turbidity, ph, remaining_ci, current_step = state
+    #pH 상태 양자화
     if ph < 5.8: #pH 낮음
         ph_state = 0
     elif ph > 8.6: #pH 높음
@@ -11,17 +12,19 @@ def quantize_state(state):
         ph_state = 1
         
     #탁도 2.8 이하면 0
+    #탁도 상태 양자화
     turbidity_state = 0 if turbidity <= 2.8 else 1
     
+    #잔류염소 상태 양자화
     #잔류염소
     if residualCI < 0.4: #잔류염소 낮음
         residualCI_state = 0
     elif residualCI > 2.0: #잔류염소 높음
-        residual_ci_state = 2
-    else: #잔류염소 정상
+        residualCI_state = 2
+    else: #잔류염소 정상git m
         residualCI_state = 1
     
-    #남은 염소(하루 최대 염소 투입 200kg)
+    #남은 염소 상태 양자화(하루 최대 염소 투입 200kg)
     if remaining_ci == 0:
         remaining_ci_state = 0
     elif remaining_ci <= 50:
@@ -33,21 +36,19 @@ def quantize_state(state):
     else:
         remaining_ci_state = 4
         
-    #시간 양자화 -> 아침 오후 저녁으로 다시 해야함
+    #시간 양자화(아침, 오후, 저녁)
     hour = 9 + (int(current_step) * 10) // 60
     if 9 <= hour < 12:
-        time_state = 0
-    elif 12 <= hour < 14:
-        time_state = 1
-    elif 14 <= hour < 17:
-        time_state = 2
+        time_state = 0  #아침
+    elif 12 <= hour < 17:
+        time_state = 1  #오후
     else:
-        time_state = 3
+        time_state = 2  #저녁
         
     return (residualCI_state, turbidity_state, ph_state, remaining_ci_state, time_state)
 
 class QAgent:
-    def __init__(self, state_shape=(3,2,3,5,4), n_actions=4, alpha=0.1, gamma=0.95, epsilon=0.1, epsilon_decay=0.0, epsilon_min=0.01): #n_action : 0kg, 5kg, 15kg, 25kg
+    def __init__(self, state_shape=(3,2,3,5,3), n_actions=4, alpha=0.1, gamma=0.95, epsilon=0.1, epsilon_decay=0.0, epsilon_min=0.01): #n_action : 0kg, 5kg, 15kg, 25kg
         self.state_shape = state_shape
         self.n_actions = n_actions
         self.Q_table = np.zeros(state_shape + (n_actions,))
@@ -75,11 +76,17 @@ class QAgent:
                 self.epsilon = self.epsilon_min
 
 class FixedIntervalPolicy:
+    def __init__(self):
+        self.max_steps = 60  #하루 스텝 수
+        self.n_pulses = 10   #하루에 10번 투입
+        self.step_interval = self.max_steps // self.n_pulses  #투입 간격
+
     def choose_action(self, state):
         _, _, _, remaining_ci, current_step = state
-        if remaining_ci > 0 and int(current_step) % 3 == 0:
-            return 1
-        return 0
+        if remaining_ci > 0 and int(current_step) % self.step_interval == 0:
+            return 2  #20kg 행동
+        return 0      #0kg 행동
+
 
 class RandomPolicy:
     def choose_action(self, state):

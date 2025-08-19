@@ -1,11 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from env_waterpark import WaterParkEnv
-from agent_waterpark import QAgent, FixedIntervalPolicy, quantize_state
+from env import WaterParkEnv
+from agent import QAgent, FixedIntervalPolicy, quantize_state
 
 def run_policy_full(env, policy, quantize=False, episodes=5000):
-    total_rewards, replace_counts, safeties = [], [], []
+    total_rewards, usage_counts, safeties = [], [], []
     for ep in range(episodes):
         state = env.reset()
         rewards = 0
@@ -18,16 +18,16 @@ def run_policy_full(env, policy, quantize=False, episodes=5000):
             rewards += reward
             if state[0] > 0.5 or state[1] > 2.8 or state[2] < 5.8 or state[2] > 8.6:
                 safe = False
-        # 에피소드 종료 후 남은 교체 횟수에 따른 추가 보상
-        bonus = 0.2 * state[3]
+        #에피소드 종료 후 남은 자원 기반 보너스
+        bonus = 0.2 * state[3]   #state[3] = remaining_ci
         rewards += bonus
         total_rewards.append(rewards)
-        replace_counts.append(env.replace_count)
+        usage_counts.append(env.usedCI_count)
         safeties.append(safe)
-    return total_rewards, replace_counts, safeties
+    return total_rewards, usage_counts, safeties
 
 def train_qlearning_full(env, agent, episodes=5000):
-    rewards, replaces, safeties = [], [], []
+    rewards, usages, safeties = [], [], []
     for ep in range(episodes):
         state = env.reset()
         state_disc = quantize_state(state)
@@ -44,16 +44,16 @@ def train_qlearning_full(env, agent, episodes=5000):
             total_reward += reward
             if state[0] > 0.5 or state[1] > 2.8 or state[2] < 5.8 or state[2] > 8.6:
                 safe = False
-        # 에피소드 종료 후 남은 교체 횟수에 따른 추가 보상
+        #에피소드 종료 후 남은 자원 기반 보너스
         bonus = 0.2 * state[3]
         total_reward += bonus
         rewards.append(total_reward)
-        replaces.append(env.replace_count)
+        usages.append(env.usedCI_count)
         safeties.append(safe)
         agent.decay_epsilon()
         if (ep+1) % 100 == 0:
             print(f"Episode {ep+1} / Epsilon: {agent.epsilon:.4f}")
-    return rewards, replaces, safeties
+    return rewards, usages, safeties
 
 def moving_average(data, window=50):
     return np.convolve(data, np.ones(window)/window, mode='valid')
@@ -61,25 +61,25 @@ def moving_average(data, window=50):
 if __name__ == "__main__":
     env = WaterParkEnv()
 
-    # Q-러닝 학습, epsilon 0.1로 시작, decay로 점차 감소
-    q_agent = QAgent(epsilon=0.1, epsilon_decay=0.9995, epsilon_min=0.001)
+    #Q-러닝 학습, epsilon 0.1로 시작, decay로 점차 감소
+    q_agent = QAgent(epsilon=0.3, epsilon_decay=0.999, epsilon_min=0.001)
     fixed_policy = FixedIntervalPolicy()
 
-    # Fixed Policy
-    fixed_rewards, fixed_replace, fixed_safety = run_policy_full(env, fixed_policy, quantize=False, episodes=10000)
+    #Fixed Policy
+    fixed_rewards, fixed_usage, fixed_safety = run_policy_full(env, fixed_policy, quantize=False, episodes=10000)
 
-    # Q-Learning
-    q_rewards, q_replace, q_safety = train_qlearning_full(env, q_agent, episodes=10000)
+    #Q-Learning
+    q_rewards, q_usage, q_safety = train_qlearning_full(env, q_agent, episodes=10000)
 
-    # Greedy Policy 평가 (epsilon=0)
+    #Greedy Policy 평가(epsilon=0)
     class GreedyQPolicy:
         def choose_action(self, state):
             return np.argmax(q_agent.Q_table[state])
-    greedy_rewards, greedy_replace, greedy_safety = run_policy_full(env, GreedyQPolicy(), quantize=True, episodes=10000)
+    greedy_rewards, greedy_usage, greedy_safety = run_policy_full(env, GreedyQPolicy(), quantize=True, episodes=10000)
 
     plt.figure(figsize=(14, 5))
 
-    # 전체 리워드(왼쪽)
+    #전체 리워드(왼쪽)
     plt.subplot(1, 2, 1)
     plt.plot(moving_average(fixed_rewards), label="Fixed Policy")
     plt.plot(moving_average(q_rewards), label="Q-Learning")
@@ -88,14 +88,13 @@ if __name__ == "__main__":
     plt.ylabel("Mean Total Reward (Moving Average)")
     plt.legend()
 
-    # 자원 소모량(오른쪽)
+    #자원 소모량(오른쪽)
     plt.subplot(1, 2, 2)
-    plt.plot(moving_average(fixed_replace), label="Fixed Policy")
-    plt.plot(moving_average(q_replace), label="Q-Learning")
-    plt.plot(moving_average(greedy_replace), label="Greedy Policy")
+    plt.plot(moving_average(fixed_usage), label="Fixed Policy")
+    plt.plot(moving_average(q_usage), label="Q-Learning")
+    plt.plot(moving_average(greedy_usage), label="Greedy Policy")
     plt.title("Resource Usage Comparison")
-    plt.ylabel("Water Replacement Count (Moving Average)")
-    plt.legend()
+    plt.ylabel("Chlorine Usage (kg, Moving Average)")
 
     plt.tight_layout()
     plt.show()
