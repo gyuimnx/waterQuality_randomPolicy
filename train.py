@@ -1,3 +1,4 @@
+#train.py
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -18,9 +19,13 @@ def run_policy_full(env, policy, quantize=False, episodes=5000):
             rewards += reward
             if state[0] > 0.5 or state[1] > 2.8 or state[2] < 5.8 or state[2] > 8.6:
                 safe = False
-        #에피소드 종료 후 남은 자원 기반 보너스
-        bonus = 0.2 * state[3]   #state[3] = remaining_ci
-        rewards += bonus
+        # #에피소드 종료 후 남은 자원 기반 보너스
+        # bonus = 0.2 * state[3]   #state[3] = remaining_ci
+        # rewards += bonus
+        if env.usedCI_count > env.max_ci:  #--------------------------------------------수정
+            penalty = (env.usedCI_count - env.max_ci) * 5.0
+            rewards -= penalty
+        
         total_rewards.append(rewards)
         usage_counts.append(env.usedCI_count)
         safeties.append(safe)
@@ -44,9 +49,13 @@ def train_qlearning_full(env, agent, episodes=5000):
             total_reward += reward
             if state[0] > 0.5 or state[1] > 2.8 or state[2] < 5.8 or state[2] > 8.6:
                 safe = False
-        #에피소드 종료 후 남은 자원 기반 보너스
-        bonus = 0.2 * state[3]
-        total_reward += bonus
+        # #에피소드 종료 후 남은 자원 기반 보너스
+        # bonus = 0.2 * state[3] #조정 필요
+        # total_reward += bonus
+        if env.usedCI_count > env.max_ci:  #--------------------------------------------수정
+            penalty = (env.usedCI_count - env.max_ci) * 5.0
+            total_reward -= penalty
+            
         rewards.append(total_reward)
         usages.append(env.usedCI_count)
         safeties.append(safe)
@@ -57,6 +66,17 @@ def train_qlearning_full(env, agent, episodes=5000):
 
 def moving_average(data, window=50):
     return np.convolve(data, np.ones(window)/window, mode='valid')
+
+#E-greedy 정책 클래스(일단 삭제)
+# class EpsilonGreedyQPolicy:
+#     def __init__(self, q_agent, epsilon=0.01):
+#         self.q_agent = q_agent
+#         self.epsilon = epsilon
+
+#     def choose_action(self, state):
+#         if np.random.rand() < self.epsilon:
+#             return np.random.randint(self.q_agent.n_actions)
+#         return np.argmax(self.q_agent.Q_table[state])
 
 if __name__ == "__main__":
     env = WaterParkEnv()
@@ -71,11 +91,9 @@ if __name__ == "__main__":
     #Q-Learning
     q_rewards, q_usage, q_safety = train_qlearning_full(env, q_agent, episodes=10000)
 
-    #Greedy Policy 평가(epsilon=0)
-    class GreedyQPolicy:
-        def choose_action(self, state):
-            return np.argmax(q_agent.Q_table[state])
-    greedy_rewards, greedy_usage, greedy_safety = run_policy_full(env, GreedyQPolicy(), quantize=True, episodes=10000)
+    #Epsilon-Greedy Policy 평가(epsilon=0.01)
+    # greedy_policy = EpsilonGreedyQPolicy(q_agent, epsilon=0.01)
+    # greedy_rewards, greedy_usage, greedy_safety = run_policy_full(env, greedy_policy, quantize=True, episodes=10000)
 
     plt.figure(figsize=(14, 5))
 
@@ -83,7 +101,7 @@ if __name__ == "__main__":
     plt.subplot(1, 2, 1)
     plt.plot(moving_average(fixed_rewards), label="Fixed Policy")
     plt.plot(moving_average(q_rewards), label="Q-Learning")
-    plt.plot(moving_average(greedy_rewards), label="Greedy Policy")
+    # plt.plot(moving_average(greedy_rewards), label="Greedy Policy")
     plt.title("Policy Performance Comparison")
     plt.ylabel("Mean Total Reward (Moving Average)")
     plt.legend()
@@ -92,7 +110,7 @@ if __name__ == "__main__":
     plt.subplot(1, 2, 2)
     plt.plot(moving_average(fixed_usage), label="Fixed Policy")
     plt.plot(moving_average(q_usage), label="Q-Learning")
-    plt.plot(moving_average(greedy_usage), label="Greedy Policy")
+    # plt.plot(moving_average(greedy_usage), label="Greedy Policy")
     plt.title("Resource Usage Comparison")
     plt.ylabel("Chlorine Usage (kg, Moving Average)")
 
