@@ -2,6 +2,7 @@
 import numpy as np
 import random
 
+#시간대별 오염 계수
 def get_pollution_factor(hour):
     if 14 <= hour < 17:
         return 1.0
@@ -17,19 +18,19 @@ class WaterParkEnv:
         self.max_steps = max_steps
         self.max_ci = max_ci #하루 최대 염소 사용량(kg)
         #0kg, 5kg, 15kg, 25kg
-        self.action_ci = [0, 5, 20, 30]
+        self.action_ci = [0, 5, 15, 25]
         self.reset()
 
     def get_current_guests(self, step):
         hour = 9 + (step * 10) // 60
-        if 9 <= hour < 12:
+        if 9 <= hour < 12: #아침
             return int(10000 * 0.3 / 18)
-        elif 12 <= hour < 14:
-            return int(10000 * 0.1 / 12)
-        elif 14 <= hour < 17:
-            return int(10000 * 0.5 / 18)
+        elif 12 <= hour < 17: #오후
+            return int(10000 * 0.5 / 30)
+        elif 17 <= hour < 19: #저녁
+            return int(10000 * 0.2 / 12)
         else:
-            return int(10000 * 0.1 / 12)
+            return 0 #영업시간 외
 
     def reset(self):
         self.state = np.array([
@@ -56,9 +57,8 @@ class WaterParkEnv:
             self.usedCI_count += ci_to_add
             #염소 투입 시 잔류염소 증가(10kg당 0.2mg 가정)
             residualCI += (ci_to_add / 10.0) * 0.2 
-            # # 자원 소모 패널티: 투입한 염소량(kg)에 비례해 보상 차감-------------------------------------------------------여기서
-            # w_ci_use = 0.03   # kg당 -0.03 정도 (예: 20kg 넣으면 -0.6)
-            reward -= 0.1 * ci_to_add#-------------------------------------------------------이까지 수정함(지워도됨)
+            #자원 소모 패널티
+            reward -= 0.1 * ci_to_add
             
             turbidity -= ci_to_add * 0.1
             ph -= ci_to_add * 0.05
@@ -136,8 +136,8 @@ class WaterParkEnv:
             done = True
         self.done = done
 
-        # #디버깅
-        # print(f"[STEP {current_step}] Action={action}, Reward={reward:.3f}, CI={residualCI:.2f}, Turb={turbidity:.2f}, pH={ph:.2f}")
+        #디버깅
+        #print(f"[STEP {current_step}] Action={action}, Reward={reward:.3f}, CI={residualCI:.2f}, Turb={turbidity:.2f}, pH={ph:.2f}")
 
         return self.state.copy(), reward, done, {
             'residualCI': residualCI,

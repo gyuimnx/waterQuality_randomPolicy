@@ -47,7 +47,7 @@ def quantize_state(state):
     return (residualCI_state, turbidity_state, ph_state, remaining_ci_state, time_state)
 
 class QAgent:
-    def __init__(self, state_shape=(3,2,3,4,3), n_actions=4, alpha=0.1, gamma=0.95, epsilon=0.1, epsilon_decay=0.0, epsilon_min=0.01): #n_action : 0kg, 5kg, 15kg, 25kg
+    def __init__(self, state_shape=(3,2,3,4,3), n_actions=4, alpha=0.1, gamma=0.95, epsilon=0.1, epsilon_decay=0.0, epsilon_min=0.05): #n_action : 0kg, 5kg, 15kg, 25kg
         self.state_shape = state_shape
         self.n_actions = n_actions
         self.Q_table = np.zeros(state_shape + (n_actions,))
@@ -74,18 +74,35 @@ class QAgent:
             if self.epsilon < self.epsilon_min:
                 self.epsilon = self.epsilon_min
 
+# class FixedIntervalPolicy:
+#     def __init__(self):
+#         self.max_steps = 60  #하루 스텝 수
+#         self.n_pulses = 10   #하루에 10번 투입
+#         self.step_interval = self.max_steps // self.n_pulses  #투입 간격
+
+#     def choose_action(self, state):
+#         _, _, _, remaining_ci, current_step = state
+#         if remaining_ci > 0 and int(current_step) % self.step_interval == 0:
+#             return 2  #20kg 행동
+#         return 0      #0kg 행동
+# agent.py
 class FixedIntervalPolicy:
     def __init__(self):
-        self.max_steps = 60  #하루 스텝 수
-        self.n_pulses = 10   #하루에 10번 투입
-        self.step_interval = self.max_steps // self.n_pulses  #투입 간격
+        #3스탭(30분)마다 수질을 측정하여 염소 투입량을 결정
+        self.interval = 3
 
     def choose_action(self, state):
-        _, _, _, remaining_ci, current_step = state
-        if remaining_ci > 0 and int(current_step) % self.step_interval == 0:
-            return 2  #20kg 행동
-        return 0      #0kg 행동
-
+        residualCI, turbidity, ph, remaining_ci, current_step = state
+        #3스탭 간격이 아니면 0kg 투입
+        if int(current_step) % self.interval != 0:
+            return 0  
+        #0: 0kg, 1: 5kg, 2: 15kg, 3: 25kg
+        #잔류염소가 매우 낮거나 탁도가 높을 때 25kg 투입
+        if (residualCI < 0.8 or turbidity > 2.0):
+            return 3  # 25kg 투입
+        #수질이 정상 범위에 있거나, 잔류염소가 기준에 가까울 때 15kg 투입
+        else:
+            return 1  #5kg 투입
 
 class RandomPolicy:
     def choose_action(self, state):

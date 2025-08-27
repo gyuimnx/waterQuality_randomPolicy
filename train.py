@@ -19,12 +19,12 @@ def run_policy_full(env, policy, quantize=False, episodes=5000):
             rewards += reward
             if state[0] > 0.5 or state[1] > 2.8 or state[2] < 5.8 or state[2] > 8.6:
                 safe = False
-        # #에피소드 종료 후 남은 자원 기반 보너스
-        # bonus = 0.2 * state[3]   #state[3] = remaining_ci
-        # rewards += bonus
-        if env.usedCI_count > env.max_ci:  #--------------------------------------------수정
-            penalty = (env.usedCI_count - env.max_ci) * 5.0
-            rewards -= penalty
+        #에피소드 종료 후 남은 자원 기반 보너스
+        bonus = 0.3 * state[3]   #state[3] = remaining_ci
+        rewards += bonus
+        # if env.usedCI_count > env.max_ci:  #--------------------------------------------수정
+        #     penalty = (env.usedCI_count - env.max_ci) * 5.0
+        #     rewards -= penalty
         
         total_rewards.append(rewards)
         usage_counts.append(env.usedCI_count)
@@ -49,12 +49,12 @@ def train_qlearning_full(env, agent, episodes=5000):
             total_reward += reward
             if state[0] > 0.5 or state[1] > 2.8 or state[2] < 5.8 or state[2] > 8.6:
                 safe = False
-        # #에피소드 종료 후 남은 자원 기반 보너스
-        # bonus = 0.2 * state[3] #조정 필요
-        # total_reward += bonus
-        if env.usedCI_count > env.max_ci:  #--------------------------------------------수정
-            penalty = (env.usedCI_count - env.max_ci) * 5.0
-            total_reward -= penalty
+        #에피소드 종료 후 남은 자원 기반 보너스
+        bonus = 0.3 * state[3] #조정 필요
+        total_reward += bonus
+        # if env.usedCI_count > env.max_ci:  #--------------------------------------------수정
+        #     penalty = (env.usedCI_count - env.max_ci) * 5.0
+        #     total_reward -= penalty
             
         rewards.append(total_reward)
         usages.append(env.usedCI_count)
@@ -86,10 +86,10 @@ if __name__ == "__main__":
     fixed_policy = FixedIntervalPolicy()
 
     #Fixed Policy
-    fixed_rewards, fixed_usage, fixed_safety = run_policy_full(env, fixed_policy, quantize=False, episodes=10000)
+    fixed_rewards, fixed_usage, fixed_safety = run_policy_full(env, fixed_policy, quantize=False, episodes=6000) #10000까지는 필요없을듯 6000정도면 충분
 
     #Q-Learning
-    q_rewards, q_usage, q_safety = train_qlearning_full(env, q_agent, episodes=10000)
+    q_rewards, q_usage, q_safety = train_qlearning_full(env, q_agent, episodes=6000)
 
     #Epsilon-Greedy Policy 평가(epsilon=0.01)
     # greedy_policy = EpsilonGreedyQPolicy(q_agent, epsilon=0.01)
