@@ -23,6 +23,7 @@ def quantize_state(state):
     elif residualCI > 2.0: #잔류염소 높음
         residualCI_state = 2
     else: #잔류염소 정상git m
+        
         residualCI_state = 1
     
     #남은 염소 상태 양자화
@@ -85,6 +86,7 @@ class QAgent:
 #         if remaining_ci > 0 and int(current_step) % self.step_interval == 0:
 #             return 2  #20kg 행동
 #         return 0      #0kg 행동
+
 # agent.py
 class FixedIntervalPolicy:
     def __init__(self):

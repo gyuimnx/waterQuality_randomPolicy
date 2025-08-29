@@ -47,7 +47,7 @@ class WaterParkEnv:
 
     def step(self, action):
         residualCI, turbidity, ph, remaining_ci, current_step = self.state #잔류염소, 탁도, pH, 남은염소, 현재스탭
-        reward = 0.0 #기본 보상(수정필요)---------------------------------------------------------------------------------------기본 보상 수정 필요
+        reward = 0.0 #기본 보상(일단 0으로 시작)
         done = False
         
         #염소 투입
